@@ -1,0 +1,195 @@
+:root {
+    --bg-dark: #0f172a;
+    --card-bg: #1e293b;
+    --accent-green: #10b981;
+    --accent-blue: #3b82f6;
+    --accent-red: #ef4444;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+    color: #f8fafc;
+    min-height: 100vh;
+    user-select: none;
+}
+
+.arcade-title {
+    font-family: 'Press Start 2P', cursive;
+    background: linear-gradient(45deg, #f43f5e, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.game-card {
+    background-color: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Game Board Area */
+.game-board {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    background-color: #090d16;
+    border-radius: 1rem;
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    cursor: crosshair;
+}
+
+.game-board::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+}
+
+/* Targets Styling */
+.target {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 0 15px currentColor;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+    animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 10;
+}
+
+.target:active {
+    transform: scale(0.85) !important;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Target Types */
+.target-normal {
+    background: radial-gradient(circle, #38bdf8, #0284c7);
+    color: white;
+    border: 2px solid #7dd3fc;
+}
+
+.target-gold {
+    background: radial-gradient(circle, #fbbf24, #d97706);
+    color: white;
+    border: 2px solid #fef08a;
+    animation: pulseGold 0.8s infinite alternate;
+}
+
+@keyframes pulseGold {
+    0% { transform: scale(1); box-shadow: 0 0 10px #fbbf24; }
+    100% { transform: scale(1.1); box-shadow: 0 0 25px #fbbf24; }
+}
+
+.target-bomb {
+    background: radial-gradient(circle, #f87171, #dc2626);
+    color: white;
+    border: 2px solid #fca5a5;
+    animation: shake 0.5s infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-2px, 2px); }
+    75% { transform: translate(2px, -2px); }
+}
+
+/* Floating text effects */
+.score-popup {
+    position: absolute;
+    font-weight: 800;
+    font-size: 1.4rem;
+    pointer-events: none;
+    animation: floatUp 0.8s ease-out forwards;
+    z-index: 20;
+}
+
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+}
+
+/* Stats indicators */
+.stat-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+}
+
+.btn-diff {
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.btn-diff.active {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+/* Custom Scrollbar for Modal/Stats */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+/* Custom Rules Modal (no Bootstrap dependency) */
+#rulesOverlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1070;
+    justify-content: center;
+    align-items: center;
+}
+#rulesOverlay.active { display: flex; }
+#rulesOverlay .rules-box {
+    background: #1e293b;
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    max-width: 500px;
+    width: 90%;
+    padding: 2rem;
+}
+#rulesOverlay .rules-header {
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+#rulesOverlay .rules-header h5 { color: #f8fafc; margin: 0; }
+#rulesOverlay .rules-close {
+    background: none; border: none; color: #f8fafc;
+    font-size: 1.5rem; cursor: pointer; padding: 0.25rem;
+}
+#rulesOverlay .rule-item {
+    background: transparent; color: #f8fafc;
+    border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 0; list-style: none;
+}
+#rulesOverlay .rule-item:last-child { border-bottom: none; }
