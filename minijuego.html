@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es" class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caza al Objetivo - Arcade Challenge</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-red: #ef4444;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .arcade-title {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(45deg, #f43f5e, #8b5cf6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .game-card {
+            background-color: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Game Board Area */
+        .game-board {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            background-color: #090d16;
+            border-radius: 1rem;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .game-board::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+        }
+
+        /* Targets Styling */
+        .target {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 15px currentColor;
+            transition: transform 0.1s ease, opacity 0.2s ease;
+            animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+
+        .target:active {
+            transform: scale(0.85) !important;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Target Types */
+        .target-normal {
+            background: radial-gradient(circle, #38bdf8, #0284c7);
+            color: white;
+            border: 2px solid #7dd3fc;
+        }
+
+        .target-gold {
+            background: radial-gradient(circle, #fbbf24, #d97706);
+            color: white;
+            border: 2px solid #fef08a;
+            animation: pulseGold 0.8s infinite alternate;
+        }
+
+        @keyframes pulseGold {
+            0% { transform: scale(1); box-shadow: 0 0 10px #fbbf24; }
+            100% { transform: scale(1.1); box-shadow: 0 0 25px #fbbf24; }
+        }
+
+        .target-bomb {
+            background: radial-gradient(circle, #f87171, #dc2626);
+            color: white;
+            border: 2px solid #fca5a5;
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-2px, 2px); }
+            75% { transform: translate(2px, -2px); }
+        }
+
+        /* Floating text effects */
+        .score-popup {
+            position: absolute;
+            font-weight: 800;
+            font-size: 1.4rem;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 20;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+        }
+
+        /* Stats indicators */
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .btn-diff {
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .btn-diff.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        /* Custom Scrollbar for Modal/Stats */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100 justify-content-center align-items-center py-4">
+
+    <div class="container max-w-lg">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <div class="card game-card text-white p-3 p-md-4">
+                    
+                    <!-- Header -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 gap-2">
+                        <div>
+                            <h1 class="arcade-title h3 mb-1"><i class="fa-solid fa-crosshairs me-2"></i>CAZA OBJETIVOS</h1>
+                            <p class="text-secondary small mb-0">Demuestra tus reflejos tocando los dianas antes de que expiren</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-info btn-sm rounded-pill px-3" id="helpBtn">
+                                <i class="fa-solid fa-circle-info me-1"></i> Ayuda
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-uppercase text-secondary fw-bold tracking-wider mb-2">Selecciona Dificultad</label>
+                        <div class="row g-2" id="difficultySelector">
+                            <div class="col-6 col-sm-3">
+                                <button class="btn btn-outline-success w-100 btn-diff active" data-diff="easy">
+                                    <i class="fa-solid fa-seedling d-block mb-1 fs-5"></i> Fácil
+                                </button>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <button class="btn btn-outline-primary w-100 btn-diff" data-diff="medium">
+                                    <i class="fa-solid fa-gamepad d-block mb-1 fs-5"></i> Normal
+                                </button>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <button class="btn btn-outline-warning w-100 btn-diff" data-diff="hard">
+                                    <i class="fa-solid fa-fire d-block mb-1 fs-5"></i> Difícil
+                                </button>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <button class="btn btn-outline-danger w-100 btn-diff" data-diff="extreme">
+                                    <i class="fa-solid fa-skull d-block mb-1 fs-5"></i> Extremo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <div class="stat-card text-center">
+                                <span class="text-secondary small d-block">Puntuación</span>
+                                <span id="scoreText" class="fs-3 fw-bold text-warning">0</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card text-center">
+                                <span class="text-secondary small d-block">Tiempo</span>
+                                <span id="timerText" class="fs-3 fw-bold text-info">30s</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card text-center">
+                                <span class="text-secondary small d-block">Récord Local</span>
+                                <span id="highScoreText" class="fs-3 fw-bold text-success">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar for Time -->
+                    <div class="progress mb-3 bg-dark" style="height: 10px; border-radius: 10px;">
+                        <div id="timeProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%;"></div>
+                    </div>
+
+                    <div id="gameBoard" class="game-board d-flex justify-content-center align-items-center">
+                        <div id="startOverlay" class="text-center p-4">
+                            <i class="fa-solid fa-bullseye text-primary display-1 mb-3 opacity-75"></i>
+                            <h2 class="fw-bold">¿Listo para jugar?</h2>
+                            <p class="text-secondary mb-4">Usa el ratón o toca la pantalla para presionar los objetivos rápido.</p>
+                            <button id="startBtn" class="btn btn-primary btn-lg px-5 py-3 rounded-pill fw-bold shadow-lg">
+                                <i class="fa-solid fa-play me-2"></i> INICIAR JUEGO
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Action Footer -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2">
+                        <span id="diffInfoBadge" class="badge bg-secondary px-3 py-2">Dificultad: Fácil (x1 Puntos)</span>
+                        <button id="resetStatsBtn" class="btn btn-link btn-sm text-secondary text-decoration-none">
+                            <i class="fa-solid fa-rotate-right me-1"></i> Reiniciar Récords
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Fin de Juego -->
+    <div class="modal fade" id="gameOverModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary text-center justify-content-center">
+                    <h3 class="modal-title fw-bold text-warning" id="gameOverTitle">¡Tiempo Agotado!</h3>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i id="gameOverIcon" class="fa-solid fa-trophy display-1 text-warning"></i>
+                    </div>
+                    <p class="mb-1 text-secondary">Puntuación Final</p>
+                    <h1 id="finalScore" class="display-3 fw-bold text-white mb-3">0</h1>
+                    
+                    <div id="newRecordBadge" class="badge bg-success fs-6 px-3 py-2 mb-3 d-none">
+                        <i class="fa-solid fa-star me-1"></i> ¡NUEVO RÉCORD PERSONAL!
+                    </div>
+
+                    <div class="row g-2 justify-content-center text-center mt-2">
+                        <div class="col-5">
+                            <div class="bg-secondary bg-opacity-25 p-2 rounded">
+                                <span class="small text-secondary d-block">Precision</span>
+                                <span id="accuracyText" class="fw-bold fs-5">0%</span>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <div class="bg-secondary bg-opacity-25 p-2 rounded">
+                                <span class="small text-secondary d-block">Impactos</span>
+                                <span id="hitsText" class="fw-bold fs-5">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-light px-4 rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" id="modalPlayAgainBtn" class="btn btn-primary px-4 rounded-pill fw-bold">
+                        <i class="fa-solid fa-rotate-right me-2"></i> Jugar de nuevo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Custom Rules Modal (no Bootstrap dependency) -->
+    <style>
+        #rulesOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1070;
+            justify-content: center;
+            align-items: center;
+        }
+        #rulesOverlay.active { display: flex; }
+        #rulesOverlay .rules-box {
+            background: #1e293b;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+            padding: 2rem;
+        }
+        #rulesOverlay .rules-header {
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        #rulesOverlay .rules-header h5 { color: #f8fafc; margin: 0; }
+        #rulesOverlay .rules-close {
+            background: none; border: none; color: #f8fafc;
+            font-size: 1.5rem; cursor: pointer; padding: 0.25rem;
+        }
+        #rulesOverlay .rule-item {
+            background: transparent; color: #f8fafc;
+            border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 0; list-style: none;
+        }
+        #rulesOverlay .rule-item:last-child { border-bottom: none; }
+    </style>
+
+    <div id="rulesOverlay">
+        <div class="rules-box">
+            <div class="rules-header">
+                <h5><i class="fa-solid fa-book-open me-2 text-info"></i>Cómo Jugar</h5>
+                <button class="rules-close" id="rulesCloseBtn">&times;</button>
+            </div>
+            <ul>
+                <li class="rule-item">
+                    <span class="target target-normal position-static d-inline-block" style="width:30px; height:30px;"><i class="fa-solid fa-bullseye fs-6"></i></span>
+                    <div><strong>Objetivos Normales:</strong> +10 Puntos multiplicados por la dificultad.</div>
+                </li>
+                <li class="rule-item">
+                    <span class="target target-gold position-static d-inline-block" style="width:30px; height:30px;"><i class="fa-solid fa-star fs-6"></i></span>
+                    <div><strong>Objetivo Dorado (Rápido):</strong> +30 Puntos extra. Desaparece más rápido.</div>
+                </li>
+                <li class="rule-item">
+                    <span class="target target-bomb position-static d-inline-block" style="width:30px; height:30px;"><i class="fa-solid fa-bomb fs-6"></i></span>
+                    <div><strong>Bomba de Obstáculo:</strong> ¡EVÍTALAS! Restan -20 Puntos y reducen tu tiempo.</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Configuration Parameters for Difficulties
+        const DIFFICULTIES = {
+            easy: {
+                name: "Fácil",
+                timeLimit: 35,
+                spawnInterval: 900,
+                targetDuration: 1800,
+                targetSize: 65,
+                bombChance: 0.1,
+                goldChance: 0.2,
+                multiplier: 1,
+                badgeClass: "bg-success"
+            },
+            medium: {
+                name: "Normal",
+                timeLimit: 30,
+                spawnInterval: 700,
+                targetDuration: 1300,
+                targetSize: 55,
+                bombChance: 0.2,
+                goldChance: 0.25,
+                multiplier: 1.5,
+                badgeClass: "bg-primary"
+            },
+            hard: {
+                name: "Difícil",
+                timeLimit: 25,
+                spawnInterval: 500,
+                targetDuration: 950,
+                targetSize: 45,
+                bombChance: 0.35,
+                goldChance: 0.3,
+                multiplier: 2,
+                badgeClass: "bg-warning text-dark"
+            },
+            extreme: {
+                name: "Extremo",
+                timeLimit: 20,
+                spawnInterval: 380,
+                targetDuration: 700,
+                targetSize: 38,
+                bombChance: 0.45,
+                goldChance: 0.35,
+                multiplier: 3,
+                badgeClass: "bg-danger"
+            }
+        };
+
+        // State Variables
+        let currentDiffKey = 'easy';
+        let score = 0;
+        let timeRemaining = 0;
+        let gameActive = false;
+        let gameTimer = null;
+        let spawnTimer = null;
+        let totalClicks = 0;
+        let successfulHits = 0;
+
+        // DOM Elements
+        const gameBoard = document.getElementById('gameBoard');
+        const startOverlay = document.getElementById('startOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const scoreText = document.getElementById('scoreText');
+        const timerText = document.getElementById('timerText');
+        const highScoreText = document.getElementById('highScoreText');
+        const timeProgressBar = document.getElementById('timeProgressBar');
+        const diffInfoBadge = document.getElementById('diffInfoBadge');
+        let gameOverModal = null;
+        try { gameOverModal = new bootstrap.Modal(document.getElementById('gameOverModal')); } catch(e) {}
+
+        // Help button handler (custom modal without Bootstrap)
+        const helpBtn = document.getElementById('helpBtn');
+        const rulesOverlay = document.getElementById('rulesOverlay');
+        const rulesCloseBtn = document.getElementById('rulesCloseBtn');
+        if (helpBtn) helpBtn.addEventListener('click', () => { if (rulesOverlay) rulesOverlay.classList.add('active'); });
+        if (rulesCloseBtn) rulesCloseBtn.addEventListener('click', () => { if (rulesOverlay) rulesOverlay.classList.remove('active'); });
+        if (rulesOverlay) rulesOverlay.addEventListener('click', (e) => { if (e.target === rulesOverlay) rulesOverlay.classList.remove('active'); });
+
+        // Initialize high score display
+        try { updateHighScoreDisplay(); } catch(e) {}
+
+        // Difficulty Buttons Selection
+        document.querySelectorAll('.btn-diff').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (gameActive) return;
+                
+                document.querySelectorAll('.btn-diff').forEach(b => b.classList.remove('active'));
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('active');
+                
+                currentDiffKey = targetBtn.getAttribute('data-diff');
+                const config = DIFFICULTIES[currentDiffKey];
+
+                diffInfoBadge.className = `badge ${config.badgeClass} px-3 py-2`;
+                diffInfoBadge.textContent = `Dificultad: ${config.name} (x${config.multiplier} Puntos)`;
+                
+                timerText.textContent = `${config.timeLimit}s`;
+                updateHighScoreDisplay();
+            });
+        });
+
+        // Board click handler for precision calculation
+        gameBoard.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            totalClicks++;
+        });
+
+        // Start / Restart Handlers
+        startBtn.addEventListener('click', startGame);
+        document.getElementById('modalPlayAgainBtn').addEventListener('click', startGame);
+
+        // Reset Records
+        resetStatsBtn.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas reiniciar todos los récords locales?')) {
+                try {
+                    Object.keys(DIFFICULTIES).forEach(key => {
+                        localStorage.removeItem(`target_game_highscore_${key}`);
+                    });
+                    updateHighScoreDisplay();
+                } catch(e) {}
+            }
+        });
+
+        function startGame() {
+            // Hide game over modal if open
+            if (gameOverModal) gameOverModal.hide();
+            const config = DIFFICULTIES[currentDiffKey];
+            
+            // Reset game state
+            score = 0;
+            totalClicks = 0;
+            successfulHits = 0;
+            timeRemaining = config.timeLimit;
+            gameActive = true;
+
+            scoreText.textContent = '0';
+            timerText.textContent = `${timeRemaining}s`;
+            timeProgressBar.style.width = '100%';
+            timeProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+
+            // Clear board
+            startOverlay.classList.add('d-none');
+            clearTargets();
+
+            // Disable difficulty buttons while playing
+            document.querySelectorAll('.btn-diff').forEach(b => b.disabled = true);
+
+            // Start Timers
+            gameTimer = setInterval(updateTimer, 1000);
+            spawnTimer = setInterval(spawnTarget, config.spawnInterval);
+            
+            // Initial spawn
+            spawnTarget();
+        }
+
+        function updateTimer() {
+            timeRemaining--;
+            const config = DIFFICULTIES[currentDiffKey];
+            timerText.textContent = `${timeRemaining}s`;
+
+            // Progress bar update
+            const percentage = (timeRemaining / config.timeLimit) * 100;
+            timeProgressBar.style.width = `${percentage}%`;
+
+            if (percentage < 30) {
+                timeProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-danger';
+            } else if (percentage < 60) {
+                timeProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+            }
+
+            if (timeRemaining <= 0) {
+                endGame();
+            }
+        }
+
+        function spawnTarget() {
+            if (!gameActive) return;
+
+            const config = DIFFICULTIES[currentDiffKey];
+            const boardRect = gameBoard.getBoundingClientRect();
+            
+            const target = document.createElement('div');
+            target.className = 'target';
+
+            // Determine Target Type
+            const rand = Math.random();
+            let type = 'normal';
+            let iconClass = 'fa-bullseye';
+
+            if (rand < config.bombChance) {
+                type = 'bomb';
+                iconClass = 'fa-bomb';
+                target.classList.add('target-bomb');
+            } else if (rand < config.bombChance + config.goldChance) {
+                type = 'gold';
+                iconClass = 'fa-star';
+                target.classList.add('target-gold');
+            } else {
+                target.classList.add('target-normal');
+            }
+
+            // Target Dimensions and Position
+            const size = config.targetSize;
+            const maxX = boardRect.width - size - 20;
+            const maxY = boardRect.height - size - 20;
+
+            const posX = Math.max(10, Math.floor(Math.random() * maxX));
+            const posY = Math.max(10, Math.floor(Math.random() * maxY));
+
+            target.style.width = `${size}px`;
+            target.style.height = `${size}px`;
+            target.style.left = `${posX}px`;
+            target.style.top = `${posY}px`;
+            target.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+
+            // Hit Listener
+            target.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Avoid double counting on container
+                if (!gameActive) return;
+
+                successfulHits++;
+                handleTargetHit(type, posX, posY, size);
+                target.remove();
+            });
+
+            gameBoard.appendChild(target);
+
+            // Auto Remove Target after duration
+            setTimeout(() => {
+                if (target.parentNode === gameBoard) {
+                    target.style.opacity = '0';
+                    setTimeout(() => target.remove(), 200);
+                }
+            }, config.targetDuration);
+        }
+
+        function handleTargetHit(type, x, y, size) {
+            const config = DIFFICULTIES[currentDiffKey];
+            let pointsGained = 0;
+
+            if (type === 'normal') {
+                pointsGained = Math.round(10 * config.multiplier);
+            } else if (type === 'gold') {
+                pointsGained = Math.round(30 * config.multiplier);
+            } else if (type === 'bomb') {
+                pointsGained = -20;
+                timeRemaining = Math.max(0, timeRemaining - 2);
+            }
+
+            score = Math.max(0, score + pointsGained);
+            scoreText.textContent = score;
+
+            // Show Score Popup animation
+            showScorePopup(x + size / 2, y, pointsGained);
+        }
+
+        function showScorePopup(x, y, points) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+
+            if (points > 0) {
+                popup.textContent = `+${points}`;
+                popup.style.color = points >= 30 ? '#fbbf24' : '#38bdf8';
+            } else {
+                popup.textContent = `${points}`;
+                popup.style.color = '#ef4444';
+            }
+
+            gameBoard.appendChild(popup);
+            setTimeout(() => popup.remove(), 800);
+        }
+
+        function clearTargets() {
+            const targets = gameBoard.querySelectorAll('.target, .score-popup');
+            targets.forEach(t => t.remove());
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            clearInterval(spawnTimer);
+            clearTargets();
+
+            // Re-enable difficulty selection
+            document.querySelectorAll('.btn-diff').forEach(b => b.disabled = false);
+
+            // Calculate metrics
+            const accuracy = totalClicks > 0 ? Math.round((successfulHits / totalClicks) * 100) : 0;
+            
+// Check High Score
+                let isNewRecord = false;
+                try {
+                    const localKey = `target_game_highscore_${currentDiffKey}`;
+                    const currentHighScore = parseInt(localStorage.getItem(localKey) || '0', 10);
+                    if (score > currentHighScore) {
+                        localStorage.setItem(localKey, score.toString());
+                        isNewRecord = true;
+                        updateHighScoreDisplay();
+                    }
+                } catch(e) { isNewRecord = false; }
+
+                // Prepare Modal Content
+                document.getElementById('finalScore').textContent = score;
+                document.getElementById('accuracyText').textContent = `${accuracy}%`;
+                document.getElementById('hitsText').textContent = successfulHits;
+
+                const newRecordBadge = document.getElementById('newRecordBadge');
+                if (isNewRecord) {
+                    newRecordBadge.classList.remove('d-none');
+                } else {
+                    newRecordBadge.classList.add('d-none');
+                }
+
+            // Show Game Over Modal
+            startOverlay.classList.remove('d-none');
+            if (gameOverModal) gameOverModal.show();
+        }
+
+        function updateHighScoreDisplay() {
+            try {
+                const localKey = `target_game_highscore_${currentDiffKey}`;
+                const highScore = localStorage.getItem(localKey) || '0';
+                highScoreText.textContent = highScore;
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
