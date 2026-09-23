@@ -60,6 +60,14 @@
           <option value="mochilas">Mochilas y Organizadores</option>
         </select>
       </div>
+      <div class="col-12 col-md-4 col-lg-3">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0 text-muted">$</span>
+          <input type="number" id="price-min" class="form-control bg-light border-start-0 py-2" placeholder="Min" min="0" style="width:60px;">
+          <span class="input-group-text text-muted">-</span>
+          <input type="number" id="price-max" class="form-control bg-light border-end-0 rounded-end-3 py-2" placeholder="Max" min="0" style="width:60px;">
+        </div>
+      </div>
     </div>
 
     <div id="products-grid" class="row g-4">
@@ -317,11 +325,14 @@ const inCart = getCartQty(p.id);
     function filterProducts() {
       const search = document.getElementById('search-input').value.toLowerCase().trim();
       const cat = document.getElementById('category-filter').value;
+      const minPrice = parseFloat(document.getElementById('price-min').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('price-max').value) || Infinity;
 
       const filtered = products.filter(p => {
         const matchSearch = p.title.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
         const matchCategory = cat === 'all' || p.category === cat;
-        return matchSearch && matchCategory;
+        const matchPrice = p.price >= minPrice && p.price <= maxPrice;
+        return matchSearch && matchCategory && matchPrice;
       });
 
       renderProducts(filtered);
@@ -329,6 +340,8 @@ const inCart = getCartQty(p.id);
 
     document.getElementById('search-input').addEventListener('input', filterProducts);
     document.getElementById('category-filter').addEventListener('change', filterProducts);
+    document.getElementById('price-min').addEventListener('input', filterProducts);
+    document.getElementById('price-max').addEventListener('input', filterProducts);
 
     // Helper: total de unidades en carrito para un producto
     function getCartQty(productId) {
