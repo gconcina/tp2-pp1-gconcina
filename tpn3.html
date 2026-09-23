@@ -138,9 +138,14 @@
             <small class="text-muted d-block">Número de Pedido</small>
             <span id="order-id" class="fw-bold text-dark font-monospace">#LUM-94820</span>
           </div>
-          <button type="button" class="btn btn-primary w-100 py-2 rounded-3 fw-bold" data-bs-dismiss="modal">
-            Continuar Comprando
-          </button>
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-success w-100 py-2 rounded-3 fw-bold" onclick="finalizePurchase()">
+              <i class="fa-solid fa-check me-2"></i>Finalizar Compra
+            </button>
+            <button type="button" class="btn btn-outline-secondary w-100 py-2 rounded-3 fw-bold" onclick="cancelPurchase()" data-bs-dismiss="modal">
+              <i class="fa-solid fa-arrow-rotate-left me-2"></i>Cancelar
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -157,13 +162,14 @@
 
   <script>
     // Product List Catalog Data
-    const products = [
+const products = [
       {
         id: 'p1',
         title: 'Cuaderno Profesional Punteado A5',
         category: 'cuadernos',
         categoryLabel: 'Cuadernos y Agendas',
         price: 18.50,
+        stock: 45,
         desc: 'Tapa dura con 192 páginas de 120g libre de ácido, ideal para Bullet Journal.',
         image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=80'
       },
@@ -173,6 +179,7 @@
         category: 'arte',
         categoryLabel: 'Arte y Dibujo Técnico',
         price: 34.90,
+        stock: 20,
         desc: 'Puntas de precisión 0.2, 0.4, 0.6 y 0.8mm con tinta pigmentada resistente al agua.',
         image: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop&q=80'
       },
@@ -182,6 +189,7 @@
         category: 'escritorio',
         categoryLabel: 'Escritorio y Bolígrafos',
         price: 15.00,
+        stock: 50,
         desc: 'Cuerpo de aluminio anodizado con fluidez de tinta gel de secado rápido.',
         image: 'https://images.unsplash.com/photo-1585336261026-8f5786372969?w=500&auto=format&fit=crop&q=80'
       },
@@ -191,6 +199,7 @@
         category: 'arte',
         categoryLabel: 'Arte y Dibujo Técnico',
         price: 9.25,
+        stock: 30,
         desc: 'Escala biselada grabada a láser con alta precisión para estudiantes de arquitectura.',
         image: 'https://images.unsplash.com/photo-1580983218765-f663bec07b37?w=500&auto=format&fit=crop&q=80'
       },
@@ -200,6 +209,7 @@
         category: 'mochilas',
         categoryLabel: 'Mochilas y Organizadores',
         price: 65.00,
+        stock: 15,
         desc: 'Compartimento acolchado para laptop de 15.6" y soporte lateral para tubo portaplanos.',
         image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80'
       },
@@ -209,8 +219,9 @@
         category: 'escritorio',
         categoryLabel: 'Escritorio y Bolígrafos',
         price: 12.80,
+        stock: 35,
         desc: 'Mecanismo de latón con agarre moleteado antideslizante para dibujo técnico.',
-        image: 'https://images.unsplash.com/photo-1585336261026-8f5786372969?w=500&auto=format&fit=crop&q=80'
+        image: 'https://placehold.co/500x350/e2e8f0/1e293b?text=Portaminas'
       },
       {
         id: 'p7',
@@ -218,6 +229,7 @@
         category: 'cuadernos',
         categoryLabel: 'Cuadernos y Agendas',
         price: 22.00,
+        stock: 25,
         desc: 'Sin fechas fijas, encuadernación cosida plana y cinta marcadora.',
         image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop&q=80'
       },
@@ -227,10 +239,30 @@
         category: 'mochilas',
         categoryLabel: 'Mochilas y Organizadores',
         price: 14.50,
+        stock: 40,
         desc: 'Capacidad para 36 lápices o marcadores con protección de puntas plegable.',
-        image: 'https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=500&auto=format&fit=crop&q=80'
+        image: 'https://placehold.co/500x350/e2e8f0/1e293b?text=Estuche'
       }
     ];
+
+    // Persistir stock en localStorage para mantenerlo entre recargas
+    function saveStockToStorage() {
+      const stockData = {};
+      products.forEach(p => { stockData[p.id] = p.stock; });
+      localStorage.setItem('tpn3_stock', JSON.stringify(stockData));
+    }
+
+    function loadStockFromStorage() {
+      const saved = localStorage.getItem('tpn3_stock');
+      if (saved) {
+        const stockData = JSON.parse(saved);
+        products.forEach(p => {
+          if (stockData[p.id] !== undefined) p.stock = stockData[p.id];
+        });
+      }
+    }
+
+    loadStockFromStorage();
 
     // State array for Cart
     let cart = [];
@@ -252,19 +284,26 @@
         const col = document.createElement('div');
         col.className = 'col-12 col-sm-6 col-lg-4 col-xl-3';
 
+const inCart = getCartQty(p.id);
+        const stockLeft = p.stock - inCart;
+        const isOutOfStock = stockLeft <= 0;
         col.innerHTML = `
           <div class="product-card">
             <div class="product-img-container">
               <span class="badge-category">${p.categoryLabel}</span>
               <img src="${p.image}" alt="${p.title}" onerror="this.src='https://placehold.co/500x350/e2e8f0/1e293b?text=${encodeURIComponent(p.title)}'">
+              ${isOutOfStock ? '<div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(0,0,0,0.4);border-radius:16px;"><span class="badge bg-danger fs-6">Agotado</span></div>' : ''}
             </div>
             <div class="p-3 d-flex flex-column flex-grow-1">
               <h5 class="fw-bold text-dark fs-6 mb-2 line-clamp-2">${p.title}</h5>
               <p class="text-muted small mb-3 flex-grow-1">${p.desc}</p>
               <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-auto">
-                <span class="fs-5 fw-bold text-dark font-monospace">$${p.price.toFixed(2)}</span>
-                <button onclick="addToCart('${p.id}')" class="btn-add-cart text-nowrap">
-                  <i class="fa-solid fa-cart-plus me-1"></i> Agregar
+                <div>
+                  <span class="fs-5 fw-bold text-dark font-monospace">$${p.price.toFixed(2)}</span>
+                  <small class="d-block text-muted fs-7">${isOutOfStock ? 'Sin stock' : stockLeft + ' en stock'}</small>
+                </div>
+                <button onclick="addToCart('${p.id}')" class="btn-add-cart text-nowrap" ${isOutOfStock ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+                  <i class="fa-solid fa-cart-plus me-1"></i> ${isOutOfStock ? 'Agotado' : 'Agregar'}
                 </button>
               </div>
             </div>
@@ -291,10 +330,45 @@
     document.getElementById('search-input').addEventListener('input', filterProducts);
     document.getElementById('category-filter').addEventListener('change', filterProducts);
 
+    // Helper: total de unidades en carrito para un producto
+    function getCartQty(productId) {
+      const item = cart.find(i => i.id === productId);
+      return item ? item.qty : 0;
+    }
+
+    // Helper: encontrar producto por ID
+    function getProduct(productId) {
+      return products.find(p => p.id === productId);
+    }
+
+    // Restaura stock al quitar del carrito
+    function restoreStock(productId, qty) {
+      const product = getProduct(productId);
+      if (product) product.stock += qty;
+    }
+
+    // Descarta stock al agregar al carrito
+    function deductStock(productId, qty) {
+      const product = getProduct(productId);
+      if (product) product.stock -= qty;
+    }
+
+    // Re-renderiza productos y carrito y persiste stock
+    function refreshAll() {
+      renderProducts();
+      updateCartUI();
+    }
+
     // CART MANAGEMENT FUNCTIONS
     function addToCart(productId) {
-      const product = products.find(p => p.id === productId);
+      const product = getProduct(productId);
       if (!product) return;
+
+      const currentInCart = getCartQty(productId);
+      if (currentInCart >= product.stock) {
+        alert(`⚠️ Stock agotado para "${product.title}". Máximo disponible: ${product.stock} unidades.`);
+        return;
+      }
 
       const existingItem = cart.find(item => item.id === productId);
       if (existingItem) {
@@ -303,8 +377,8 @@
         cart.push({ ...product, qty: 1 });
       }
 
-      updateCartUI();
-      
+      refreshAll();
+
       // Auto open Offcanvas drawer
       const cartDrawer = new bootstrap.Offcanvas(document.getElementById('cartOffcanvas'));
       cartDrawer.show();
@@ -314,22 +388,46 @@
       const item = cart.find(i => i.id === productId);
       if (!item) return;
 
-      item.qty += delta;
+      item.qty = item.qty + delta;
       if (item.qty <= 0) {
         removeFromCart(productId);
       } else {
-        updateCartUI();
+        refreshAll();
       }
     }
 
     function removeFromCart(productId) {
       cart = cart.filter(i => i.id !== productId);
-      updateCartUI();
+      refreshAll();
     }
 
     function clearCart() {
       cart = [];
-      updateCartUI();
+      refreshAll();
+    }
+
+    // Finalizar compra: descontar stock y confirmar
+    function finalizePurchase() {
+      cart.forEach(item => {
+        deductStock(item.id, item.qty);
+      });
+      saveStockToStorage();
+      cart = [];
+      const checkoutModal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
+      if (checkoutModal) checkoutModal.hide();
+      refreshAll();
+    }
+
+    // Cancelar compra: devolver todo el stock
+    function cancelPurchase() {
+      cart.forEach(item => {
+        restoreStock(item.id, item.qty);
+      });
+      saveStockToStorage();
+      cart = [];
+      const checkoutModal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
+      if (checkoutModal) checkoutModal.hide();
+      refreshAll();
     }
 
     function updateCartUI() {
@@ -357,6 +455,8 @@
 
           const row = document.createElement('div');
           row.className = 'cart-item-row mb-3';
+          const product = getProduct(item.id);
+          const stockLeft = product ? product.stock : 0;
           row.innerHTML = `
             <div class="d-flex align-items-center gap-3">
               <img src="${item.image}" alt="${item.title}" class="rounded" style="width: 55px; height: 55px; object-fit: cover;">
@@ -367,8 +467,9 @@
                   <div class="btn-group btn-group-sm border rounded">
                     <button onclick="changeQty('${item.id}', -1)" class="btn btn-light py-0 px-2">-</button>
                     <span class="btn btn-white py-0 px-2 fw-bold font-monospace disabled text-dark" style="opacity: 1;">${item.qty}</span>
-                    <button onclick="changeQty('${item.id}', 1)" class="btn btn-light py-0 px-2">+</button>
+                    <button onclick="changeQty('${item.id}', 1)" class="btn btn-light py-0 px-2" ${stockLeft <= 0 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>+</button>
                   </div>
+                  <small class="text-muted fs-7 ms-1">${stockLeft > 0 ? stockLeft + ' restantes' : 'Sin stock'}</small>
                 </div>
               </div>
               <div class="text-end">
@@ -399,17 +500,12 @@
         return;
       }
 
-      // Hide offcanvas
-      const cartDrawerEl = document.getElementById('cartOffcanvas');
-      const cartDrawer = bootstrap.Offcanvas.getInstance(cartDrawerEl);
-      if (cartDrawer) cartDrawer.hide();
-
-      // Generate random order ID and show modal
+      // Generate random order ID
       document.getElementById('order-id').textContent = '#LUM-' + Math.floor(10000 + Math.random() * 90000);
+
+      // Mostrar modal de confirmación
       const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
       checkoutModal.show();
-
-      clearCart();
     }
 
     // Initialize Catalog
