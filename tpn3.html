@@ -270,6 +270,9 @@ const products = [
       }
     }
 
+    // Resetear stock en localStorage para volver al valor original del catálogo
+    // Eliminar esta línea si se desea conservar el stock modificado por el usuario
+    try { localStorage.removeItem('tpn3_stock'); } catch(e) {}
     loadStockFromStorage();
 
     // State array for Cart
